@@ -24,6 +24,8 @@ public class MeshToSDF : MonoBehaviour
     public Material materialOutput;
     public string materialProperty = "_Texture3D";
 
+    public UnityEngine.UI.RawImage rawImage;
+
     [Tooltip("Visual effect whose property to set with the output SDF texture")]
     public VisualEffect vfxOutput;
     public string vfxProperty = "Texture3D";
@@ -48,6 +50,7 @@ public class MeshToSDF : MonoBehaviour
 
 
     Mesh prevMesh;
+    Mesh _mesh;
 
     // kernel ids
     int JFA;
@@ -83,6 +86,11 @@ public class MeshToSDF : MonoBehaviour
             staticMesh = new Mesh();
         }
         skinnedMeshRenderer = skinnedMeshRenderer ?? GetComponent<SkinnedMeshRenderer>();
+        Debug.Log("SMR = " + skinnedMeshRenderer);
+        if (skinnedMeshRenderer.rootBone.localPosition == null)
+        {
+            Debug.Log("You must assign a transform to the root bone of your skinned mesh renderer");
+        }
 
     }
 
@@ -91,10 +99,18 @@ public class MeshToSDF : MonoBehaviour
 
         float t = Time.time;
 
-        Mesh _mesh;
+        //Mesh _mesh;
         if (skinnedMeshRenderer) {
-            _mesh = new Mesh();
+            if (_mesh == null)
+            {
+                _mesh = new Mesh();
+            }
+            //_mesh = new Mesh();
+            //Debug.Log(skinnedMeshRenderer.sharedMesh);
+
+
             skinnedMeshRenderer.BakeMesh(_mesh);
+            
         } else {
             _mesh = this.staticMesh;
         }
@@ -106,7 +122,8 @@ public class MeshToSDF : MonoBehaviour
     samplesPerTriangle, outputRenderTexture);
 
             FloodFillToSDF(outputRenderTexture);
-            DestroyImmediate(_mesh);
+            //DestroyImmediate(_mesh);
+            _mesh.Clear();
         }
 
         if (materialOutput) {
@@ -117,12 +134,38 @@ public class MeshToSDF : MonoBehaviour
             }
         }
 
+        if (rawImage != null && rawImage.texture == null)
+        {
+            rawImage.texture = outputRenderTexture;
+        }
+
         if(vfxOutput) {
             if(!vfxOutput.HasTexture(vfxProperty)) {
                 Debug.LogError(string.Format("Vfx Output doesn't have property {0}", vfxProperty));
             } else {
                 vfxOutput.SetTexture(vfxProperty, outputRenderTexture);
             }
+
+            if (!vfxOutput.HasVector3("Pos"))
+            {
+                Debug.LogError(string.Format("Vfx Output doesn't have property Pos"));
+            }
+            else
+            {
+                vfxOutput.SetVector3("Pos", skinnedMeshRenderer.rootBone.position);
+                    
+            }
+
+            if (!vfxOutput.HasVector3("Rot"))
+            {
+                Debug.LogError(string.Format("Vfx Output doesn't have property Rot"));
+            }
+            else
+            {
+                vfxOutput.SetVector3("Rot", skinnedMeshRenderer.rootBone.rotation.eulerAngles);
+
+            }
+
         }
     }
 
